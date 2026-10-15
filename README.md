@@ -28,3 +28,9 @@ An enterprise-grade, fully serverless RAG knowledge assistant built on AWS, leve
 - **Backend:** Python, Boto3, LangChain / Vector Embeddings (depending on the specific details of requirements)
 - **Frontend:** React, Vite, JavaScript
 - **Architecture:** Serverless, RAG (Retrieval-Augmented Generation), Event-Driven API
+
+---
+
+## 📺 Screenshot
+The chatbot generates responses based on information retrieved from the internal knowledge file, <a src="./sources/infor1.txt">info1.txt</a>.
+<img src="./images/RAG Screenshot.png" alt="RAG Screenshot"/>
