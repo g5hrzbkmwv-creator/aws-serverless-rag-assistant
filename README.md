@@ -32,5 +32,5 @@ An enterprise-grade, fully serverless RAG knowledge assistant built on AWS, leve
 ---
 
 ## 📺 Screenshot
-The chatbot generates responses based on information retrieved from the internal knowledge file, <a src="./sources/infor1.txt">info1.txt</a>.
+The chatbot generates responses based on information retrieved from the internal knowledge file, info1.txt.
 <img src="./images/RAG Screenshot.png" alt="RAG Screenshot"/>
