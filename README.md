@@ -4,8 +4,7 @@ An enterprise-grade, fully serverless RAG knowledge assistant built on AWS, leve
 ---
 
 ## 📐 System Architecture Diagram
-*(請將你的 AWS 架構圖 PNG 檔上傳至專案中，並在此處替換圖片路徑)*
-![Architecture Diagram](./architecture.png)
+<img src="./Project1 RAG Assistant.drawio.png" alt="Architecture Diagram"/>
 
 ---
 
