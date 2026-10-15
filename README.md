@@ -25,6 +25,6 @@ An enterprise-grade, fully serverless RAG knowledge assistant built on AWS, leve
 
 ## 🛠️ Tech Stack
 - **Cloud / AI / AWS:** Amazon Bedrock (Amazon Nova Pro), AWS Lambda, Amazon API Gateway, Amazon S3, Amazon CloudFront (with OAC), CloudFormation
-- **Backend:** Python, Boto3, LangChain / Vector Embeddings (視乎你的實作細節可自行微調)
+- **Backend:** Python, Boto3, LangChain / Vector Embeddings (depending on the specific details of requirements)
 - **Frontend:** React, Vite, JavaScript
 - **Architecture:** Serverless, RAG (Retrieval-Augmented Generation), Event-Driven API
