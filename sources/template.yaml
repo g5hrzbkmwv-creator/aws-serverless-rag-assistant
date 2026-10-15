@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Enterprise AI-Powered RAG Knowledge Assistant - Infrastructure Stack
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    Description: Environment name for resource tagging.
+
+  CodeBucketName:
+    Type: String
+    Default: code-storage-315224414670-dev
+    Description: Existing S3 Bucket where Lambda code zip files are stored.
+
+Resources:
+  # 1. S3 Bucket for Storing Documents
+  DocumentStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "rag-documents-${AWS::AccountId}-${EnvironmentName}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # 2. IAM Role for Lambda (S3 Read/Write + Bedrock Access + CloudWatch Logs)
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: RagLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              # S3 Access
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt DocumentStorageBucket.Arn
+                  - !Sub "${DocumentStorageBucket.Arn}/*"
+              # Amazon Bedrock Access (Invoke Models like Claude or Nova)
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: "*"
+
+  # 3a. Lambda Function for RAG Core Logic
+  ChatLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "rag-chat-${EnvironmentName}"
+      Handler: lambda_chat.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.11
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref CodeBucketName
+      Code:
+        S3Bucket: !Ref CodeBucketName  # 直接使用我們同一個 S3 bucket，或者換成放 zip 的 bucket
+        S3Key: "lambda-code/lambda_chat.zip"         # 請改成你在 S3 上上傳的 zip 檔實際路徑與檔名
+
+  # 3b. Lambda Function for RAG Core Logic
+  DocumentProcessorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "rag-doc-processor-${EnvironmentName}"
+      Handler: lambda_processor.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.11
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref CodeBucketName
+      Code:
+        S3Bucket: !Ref CodeBucketName  # 直接使用我們同一個 S3 bucket，或者換成放 zip 的 bucket
+        S3Key: "lambda-code/lambda_processor.zip"         # 請改成你在 S3 上上傳的 zip 檔實際路徑與檔名
+
+  # 4. API Gateway (HTTP API V2)
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "rag-api-${EnvironmentName}"
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+
+  # 5. API Gateway Integration with Lambda
+  LambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationMethod: POST
+      PayloadFormatVersion: "2.0"
+      IntegrationUri: !GetAtt ChatLambdaFunction.Arn
+
+  # 6. API Route (POST /chat)
+  ApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: "POST /chat"
+      Target: !Sub "integrations/${LambdaIntegration}"
+
+  # 7. Default Stage (Auto-deploy)
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: "$default"
+      AutoDeploy: true
+
+  # 8. Permission for API Gateway to invoke Lambda
+  ApiGatewayLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ChatLambdaFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*/chat"
+
+  # 9. Permission for S3 to invoke Lambda
+  S3InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref DocumentProcessorLambda
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt DocumentStorageBucket.Arn
+
+Outputs:
+  # 輸出 API 的 Endpoint URL 方便測試
+  ApiEndpoint:
+    Description: API Gateway Endpoint URL for RAG Chat
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/chat"
+  BucketName:
+    Description: S3 Bucket for documents
+    Value: !Ref DocumentStorageBucket
+  ChatLambdaFunction:
+    Description: Chat Lambda Function Name
+    Value: !Ref ChatLambdaFunction
+  DocumentProcessorLambda:
+    Description: Processor Lambda Function Name
+    Value: !Ref DocumentProcessorLambda
