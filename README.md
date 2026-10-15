@@ -4,7 +4,7 @@ An enterprise-grade, fully serverless RAG knowledge assistant built on AWS, leve
 ---
 
 ## 📐 System Architecture Diagram
-<img src="./Project1 RAG Assistant.drawio.png" alt="Architecture Diagram"/>
+<img src="./images/Project1 RAG Assistant.drawio.png" alt="Architecture Diagram"/>
 
 ---
 
