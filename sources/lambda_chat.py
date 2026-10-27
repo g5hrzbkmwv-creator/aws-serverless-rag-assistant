@@ -8,7 +8,7 @@ bedrock_runtime = boto3.client('bedrock-runtime', region_name='ap-southeast-2')
 s3_client = boto3.client('s3')
 
 # 從環境變數讀取 S3 桶名 (確保在 CloudFormation 有設定 DOCUMENT_BUCKET_NAME)
-BUCKET_NAME = "rag-documents-315224414670-dev" # os.environ.get('DOCUMENT_BUCKET_NAME')
+BUCKET_NAME = os.environ.get('DOCUMENT_BUCKET_NAME')
 
 def get_embedding(text):
   """將使用者的問題轉為向量 (使用 Titan Embeddings)"""
