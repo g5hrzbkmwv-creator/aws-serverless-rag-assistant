@@ -10,7 +10,6 @@ Parameters:
 
   CodeBucketName:
     Type: String
-    Default: code-storage-315224414670-dev
     Description: Existing S3 Bucket where Lambda code zip files are stored.
 
 Resources:
